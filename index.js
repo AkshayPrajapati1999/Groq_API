@@ -15,11 +15,11 @@ const groq = new Groq({ apiKey });
 async function routeQuery(userQuery) {
   const intent = await inferIntent(groq, userQuery);
 
-  if (intent === "create") {
+  if (intent === "CREATE") {
     return handleCreate(userQuery);
   }
 
-  if (intent === "schedule") {
+  if (intent === "SCHEDULE") {
     return handleSchedule(userQuery);
   }
 
