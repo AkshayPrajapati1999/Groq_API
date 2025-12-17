@@ -1,0 +1,20 @@
+{
+  "name": "groq-intent",
+  "version": "1.0.0",
+  "description": "Route user queries to create or schedule via Groq intent detection.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "serve": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^4.22.1",
+    "groq-sdk": "^0.37.0"
+  }
+}
