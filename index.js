@@ -1,8 +1,6 @@
 require("dotenv").config();
 const Groq = require("groq-sdk");
 const { inferIntent } = require("./intent");
-const handleCreate = require("./actions/create");
-const handleSchedule = require("./actions/schedule");
 
 const apiKey = process.env.GROQ_API_KEY;
 if (!apiKey) {
@@ -13,17 +11,13 @@ if (!apiKey) {
 const groq = new Groq({ apiKey });
 
 async function routeQuery(userQuery) {
-  const intent = await inferIntent(groq, userQuery);
+  const result = await inferIntent(groq, userQuery);
 
-  if (intent === "CREATE") {
-    return handleCreate(userQuery);
+  if (result.intent === "create" || result.intent === "schedule") {
+    return result;
+  } else {
+    throw new Error(`Unable to resolve intent (got "${result.intent}") for: ${userQuery}`);
   }
-
-  if (intent === "SCHEDULE") {
-    return handleSchedule(userQuery);
-  }
-
-  throw new Error(`Unable to resolve intent (got "${intent}") for: ${userQuery}`);
 }
 
 async function main() {
@@ -32,7 +26,7 @@ async function main() {
 
   try {
     const result = await routeQuery(userQuery);
-    console.log(`[${new Date().toISOString()}] intent=${result.intent} message="${result.message}"`);
+    console.log(`[${new Date().toISOString()}] intent=${result.intent}`);
   } catch (err) {
     console.error(err.message);
     process.exitCode = 1;
@@ -44,4 +38,3 @@ if (require.main === module) {
 }
 
 module.exports = { routeQuery };
-
