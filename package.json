@@ -15,6 +15,7 @@
   "dependencies": {
     "dotenv": "^17.2.3",
     "express": "^4.22.1",
-    "groq-sdk": "^0.37.0"
+    "groq-sdk": "^0.37.0",
+    "sqlite3": "^5.1.6"
   }
 }

@@ -1,6 +1,7 @@
 require("dotenv").config();
 const Groq = require("groq-sdk");
 const { inferIntent } = require("./intent");
+const { addIntent } = require("./storage");
 
 const apiKey = process.env.GROQ_API_KEY;
 if (!apiKey) {
@@ -14,6 +15,8 @@ async function routeQuery(userQuery) {
   const result = await inferIntent(groq, userQuery);
 
   if (result.intent === "create" || result.intent === "schedule") {
+    const id = addIntent(result.intent, result);
+    result.id = id;
     return result;
   } else {
     throw new Error(`Unable to resolve intent (got "${result.intent}") for: ${userQuery}`);
