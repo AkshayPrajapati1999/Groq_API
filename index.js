@@ -11,11 +11,11 @@ if (!apiKey) {
 
 const groq = new Groq({ apiKey });
 
-async function routeQuery(userQuery) {
+async function routeQuery(userQuery, userId = null) {
   const result = await inferIntent(groq, userQuery);
 
   if (result.intent === "create" || result.intent === "schedule") {
-    const id = addIntent(result.intent, result);
+    const id = addIntent(result.intent, result, userId);
     result.id = id;
     return result;
   } else {

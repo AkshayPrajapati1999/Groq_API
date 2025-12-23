@@ -16,8 +16,16 @@ db.serialize(() => {
     id TEXT PRIMARY KEY,
     type TEXT,
     data TEXT,
-    status TEXT DEFAULT 'pending'
+    status TEXT DEFAULT 'pending',
+    user_id TEXT
   )`);
+
+  // Add user_id column if it doesn't exist (for existing databases)
+  db.run(`ALTER TABLE intents ADD COLUMN user_id TEXT`, (err) => {
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding user_id column:', err);
+    }
+  });
 });
 
 function addResponse(response) {
@@ -27,16 +35,16 @@ function addResponse(response) {
   db.run('INSERT INTO responses (id, data, timestamp) VALUES (?, ?, ?)', [id, data, timestamp]);
 }
 
-function addIntent(type, intent) {
+function addIntent(type, intent, userId = null) {
   const id = Date.now().toString();
   const data = JSON.stringify(intent);
-  db.run('INSERT INTO intents (id, type, data, status) VALUES (?, ?, ?, ?)', [id, type, data, 'pending']);
+  db.run('INSERT INTO intents (id, type, data, status, user_id) VALUES (?, ?, ?, ?, ?)', [id, type, data, 'pending', userId]);
   return id;
 }
 
 function updateIntentStatus(id, status) {
   return new Promise((resolve) => {
-    db.run('UPDATE intents SET status = ? WHERE id = ?', [status, id], function(err) {
+    db.run('UPDATE intents SET status = ? WHERE id = ?', [status, id], function (err) {
       resolve(this.changes > 0);
     });
   });
@@ -50,6 +58,7 @@ function getIntent(id) {
         intent.id = row.id;
         intent.type = row.type;
         intent.status = row.status;
+        intent.user_id = row.user_id;
         resolve(intent);
       } else {
         resolve(null);
@@ -58,13 +67,24 @@ function getIntent(id) {
   });
 }
 
-function readIntents() {
+function readIntents(userId = null) {
   return new Promise((resolve) => {
-    db.all('SELECT * FROM intents ORDER BY id DESC', [], (err, rows) => {
+    let query = 'SELECT * FROM intents WHERE user_id = ?';
+    let params = [userId];
+
+    query += ' ORDER BY id DESC';
+
+    db.all(query, params, (err, rows) => {
+      if (err) {
+        console.error('Error reading intents:', err);
+        resolve([]);
+        return;
+      }
       const intents = rows.map(row => {
         const intent = JSON.parse(row.data);
         intent.id = row.id;
         intent.type = row.type;
+        intent.user_id = row.user_id;
         if (row.type === 'schedule') {
           intent.status = row.status;
         }
@@ -75,16 +95,27 @@ function readIntents() {
   });
 }
 
-function readCreates() {
+function readCreates(userId = null) {
   return new Promise((resolve) => {
-    db.all('SELECT * FROM intents WHERE type = ? ORDER BY id DESC', ['create'], (err, rows) => {
+    let query = 'SELECT * FROM intents WHERE type = ? AND user_id = ?';
+    let params = ['create', userId];
+
+    query += ' ORDER BY id DESC';
+
+    db.all(query, params, (err, rows) => {
+      if (err) {
+        console.error('Error reading creates:', err);
+        resolve([]);
+        return;
+      }
       const intents = rows.map(row => {
         const intent = JSON.parse(row.data);
         return {
           intent: intent.intent,
           image_generation_prompt: intent.image_generation_prompt,
           caption_prompt: intent.caption_prompt,
-          id: row.id
+          id: row.id,
+          user_id: row.user_id
         };
       });
       resolve(intents);
@@ -92,14 +123,25 @@ function readCreates() {
   });
 }
 
-function readSchedules() {
+function readSchedules(userId = null, isAdmin = false) {
   return new Promise((resolve) => {
-    db.all('SELECT * FROM intents WHERE type = ? ORDER BY id DESC', ['schedule'], (err, rows) => {
+    let query = 'SELECT * FROM intents WHERE type = ?';
+    let params = ['schedule'];
+
+    if (!isAdmin && userId) {
+      query += ' AND user_id = ?';
+      params.push(userId);
+    }
+
+    query += ' ORDER BY id DESC';
+
+    db.all(query, params, (err, rows) => {
       const intents = rows.map(row => {
         const intent = JSON.parse(row.data);
         intent.id = row.id;
         intent.type = row.type;
         intent.status = row.status;
+        intent.user_id = row.user_id;
         return intent;
       });
       resolve(intents);
@@ -109,7 +151,7 @@ function readSchedules() {
 
 function deleteIntent(id) {
   return new Promise((resolve) => {
-    db.run('DELETE FROM intents WHERE id = ?', [id], function(err) {
+    db.run('DELETE FROM intents WHERE id = ?', [id], function (err) {
       resolve(this.changes > 0);
     });
   });
