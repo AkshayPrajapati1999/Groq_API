@@ -1,68 +1,47 @@
-const { validateSession, verifyToken } = require('./auth');
+const { verifyToken } = require('./auth');
 
 /**
- * Middleware to authenticate requests using session ID
- */
-function authenticateSession(req, res, next) {
-    // Get session ID from header, body, or cookie
-    const sessionId = req.headers['x-session-id'] || req.body?.sessionId || req.cookies?.sessionId;
-
-    if (!sessionId) {
-        return res.status(401).json({
-            error: 'Access denied. Session ID required.'
-        });
-    }
-
-    try {
-        // Validate session
-        validateSession(sessionId).then(sessionData => {
-            if (!sessionData) {
-                return res.status(401).json({
-                    error: 'Invalid or expired session.'
-                });
-            }
-
-            // Attach user info to request
-            req.user = sessionData;
-            req.sessionId = sessionId;
-
-            next();
-        }).catch(err => {
-             return res.status(500).json({ error: 'Session validation error' });
-        });
-    } catch (error) {
-        return res.status(403).json({
-            error: 'Session validation failed.'
-        });
-    }
-}
-
-/**
- * Middleware to authenticate requests using JWT token
+ * Middleware to authenticate requests using JWT
  */
 function authenticateToken(req, res, next) {
+    // Get token from Authorization header
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
     if (!token) {
-        return res.status(401).json({ error: 'Access denied. Token required.' });
+        return res.status(401).json({
+            error: 'Access denied. No token provided.'
+        });
     }
 
     try {
+        // Verify token
         const decoded = verifyToken(token);
+
+        // Check if it's an access token
+        if (decoded.type !== 'access') {
+            return res.status(401).json({
+                error: 'Invalid token type. Please use an access token.'
+            });
+        }
+
+        // Attach user info to request
         req.user = {
             userId: decoded.userId,
             email: decoded.email,
-            role: decoded.type
+            role: decoded.role
         };
+
         next();
     } catch (error) {
-        return res.status(403).json({ error: 'Invalid or expired token.' });
+        return res.status(403).json({
+            error: 'Invalid or expired token.'
+        });
     }
 }
 
 /**
- * Optional authentication - doesn't fail if no code provided
+ * Optional authentication - doesn't fail if no token provided
  */
 function optionalAuth(req, res, next) {
     const authHeader = req.headers['authorization'];
@@ -104,7 +83,6 @@ function authorizeAdmin(req, res, next) {
 }
 
 module.exports = {
-    authenticateSession,
     authenticateToken,
     optionalAuth,
     authorizeAdmin

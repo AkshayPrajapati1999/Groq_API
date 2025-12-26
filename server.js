@@ -12,13 +12,8 @@ const {
   updateProfile,
   changePassword
 } = require("./auth");
-const { authenticateSession, optionalAuth: optionalSessionAuth, authorizeAdmin } = require("./authMiddleware");
+const { authenticateToken, optionalAuth, authorizeAdmin } = require("./authMiddleware");
 const { getUserByEmail } = require("./authStorage");
-const { v4: uuidv4 } = require('uuid');
-const Groq = require('groq-sdk');
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const sessions = {}; // In-memory storage for chat sessions
 
 const app = express();
 app.use(express.json());
@@ -113,7 +108,7 @@ app.post("/auth/reset-password", async (req, res) => {
  * Get user profile (protected)
  * Headers: Authorization: Bearer <token>
  */
-app.get("/auth/profile", authenticateSession, async (req, res) => {
+app.get("/auth/profile", authenticateToken, async (req, res) => {
   try {
     const result = await getUserProfile(req.user.userId);
     res.json(result);
@@ -125,10 +120,10 @@ app.get("/auth/profile", authenticateSession, async (req, res) => {
 /**
  * PUT /auth/profile
  * Update user profile (protected)
- * Headers: x-session-id: <session_id>
+ * Headers: Authorization: Bearer <token>
  * Body: { name }
  */
-app.put("/auth/profile", authenticateSession, async (req, res) => {
+app.put("/auth/profile", authenticateToken, async (req, res) => {
   try {
     const result = await updateProfile(req.user.userId, req.body);
     res.json(result);
@@ -140,10 +135,10 @@ app.put("/auth/profile", authenticateSession, async (req, res) => {
 /**
  * POST /auth/change-password
  * Change password (protected)
- * Headers: x-session-id: session_id
+ * Headers: Authorization: Bearer <token>
  * Body: { currentPassword, newPassword }
  */
-app.post("/auth/change-password", authenticateSession, async (req, res) => {
+app.post("/auth/change-password", authenticateToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const result = await changePassword(req.user.userId, currentPassword, newPassword);
@@ -161,7 +156,7 @@ app.post("/auth/change-password", authenticateSession, async (req, res) => {
  * POST /route
  * Route a query (Authenticated)
  */
-app.post("/route", authenticateSession, async (req, res) => {
+app.post("/route", authenticateToken, async (req, res) => {
   const userQuery = req.body?.query;
   const userId = req.user.userId;
   const userEmail = req.user.email;
@@ -184,7 +179,7 @@ app.post("/route", authenticateSession, async (req, res) => {
  * GET /intents
  * View intents (User sees own, Admin sees all)
  */
-app.get("/intents", authenticateSession, async (req, res) => {
+app.get("/intents", authenticateToken, async (req, res) => {
   const { userId, role } = req.user;
   const isAdmin = role === 'admin';
   const intents = await readIntents(userId, isAdmin);
@@ -195,7 +190,7 @@ app.get("/intents", authenticateSession, async (req, res) => {
  * GET /creates
  * View create intents (User sees own)
  */
-app.get("/creates", authenticateSession, async (req, res) => {
+app.get("/creates", authenticateToken, async (req, res) => {
   const { userId } = req.user;
   const creates = await readCreates(userId);
   res.json(creates);
@@ -205,7 +200,7 @@ app.get("/creates", authenticateSession, async (req, res) => {
  * GET /schedules
  * View schedule intents (User sees own)
  */
-app.get("/schedules", authenticateSession, async (req, res) => {
+app.get("/schedules", authenticateToken, async (req, res) => {
   const { userId } = req.user;
   const schedules = await readSchedules(userId);
   res.json(schedules);
@@ -215,7 +210,7 @@ app.get("/schedules", authenticateSession, async (req, res) => {
  * POST /create/:id
  * Accept/Reject create (Owner or Admin)
  */
-app.post("/create/:id", authenticateSession, async (req, res) => {
+app.post("/create/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { action } = req.body;
   const { userId, role } = req.user;
@@ -249,7 +244,7 @@ app.post("/create/:id", authenticateSession, async (req, res) => {
  * POST /schedule/:id
  * Accept/Reject schedule (Owner only)
  */
-app.post("/schedule/:id", authenticateSession, async (req, res) => {
+app.post("/schedule/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { action } = req.body;
   const { userId } = req.user;
@@ -283,7 +278,7 @@ app.post("/schedule/:id", authenticateSession, async (req, res) => {
  * DELETE /intent/:id
  * Delete intent (Owner only)
  */
-app.delete("/intent/:id", authenticateSession, async (req, res) => {
+app.delete("/intent/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { userId } = req.user;
 
@@ -304,80 +299,6 @@ app.delete("/intent/:id", authenticateSession, async (req, res) => {
     } else {
       res.status(404).json({ error: "Intent not found" });
     }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ============================================
-// CHAT ROUTES
-// ============================================
-
-/**
- * POST /start-session
- * Start a new chat session
- * Returns: { sessionId: string }
- */
-app.post("/start-session", (req, res) => {
-  const sessionId = uuidv4();
-  sessions[sessionId] = { history: [] };
-  res.json({ sessionId });
-});
-
-/**
- * POST /chat
- * Send a message in an existing chat session
- * Body: { sessionId: string, message: string }
- * Returns: { response: string, history: array }
- */
-app.post("/chat", async (req, res) => {
-  const { sessionId, message } = req.body;
-
-  if (!sessionId || !message) {
-    return res.status(400).json({ error: "sessionId and message are required" });
-  }
-
-  if (!sessions[sessionId]) {
-    return res.status(400).json({ error: "Invalid sessionId" });
-  }
-
-  const session = sessions[sessionId];
-
-  // Add user message to history
-  const userMessage = {
-    role: "user",
-    content: message,
-    timestamp: new Date().toISOString()
-  };
-  session.history.push(userMessage);
-
-  try {
-    // Prepare messages for Groq API
-    const messages = session.history.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
-
-    // Get response from Groq
-    const chatCompletion = await groq.chat.completions.create({
-      messages,
-      model: "llama3-8b-8192", // or another model
-    });
-
-    const assistantResponse = chatCompletion.choices[0]?.message?.content || "Sorry, I couldn't generate a response.";
-
-    // Add assistant response to history
-    const assistantMessage = {
-      role: "assistant",
-      content: assistantResponse,
-      timestamp: new Date().toISOString()
-    };
-    session.history.push(assistantMessage);
-
-    res.json({
-      response: assistantResponse,
-      history: session.history
-    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

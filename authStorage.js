@@ -27,24 +27,11 @@ db.serialize(() => {
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
-    // Sessions table
-    db.run(`CREATE TABLE IF NOT EXISTS sessions (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    session_id TEXT UNIQUE NOT NULL,
-    expires_at TEXT NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-  )`);
-
     // Create index on email for faster lookups
     db.run(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
 
     // Create index on reset tokens
     db.run(`CREATE INDEX IF NOT EXISTS idx_reset_tokens ON password_reset_tokens(token)`);
-
-    // Create index on session_id for faster lookups
-    db.run(`CREATE INDEX IF NOT EXISTS idx_sessions_session_id ON sessions(session_id)`);
 });
 
 /**
@@ -260,103 +247,10 @@ function deleteExpiredResetTokens() {
     });
 }
 
-/**
- * Create a new session
- */
-function createSession(userId, sessionId, expiresAt) {
-    return new Promise((resolve, reject) => {
-        const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-        const timestamp = new Date().toISOString();
-
-        // First, delete any existing sessions for this user
-        db.run('DELETE FROM sessions WHERE user_id = ?', [userId], (err) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-
-            // Then create the new session
-            db.run(
-                'INSERT INTO sessions (id, user_id, session_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?)',
-                [id, userId, sessionId, expiresAt.toISOString(), timestamp],
-                function (err) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(id);
-                    }
-                }
-            );
-        });
-    });
-}
-
-/**
- * Get session by session ID
- */
-function getSessionById(sessionId) {
-    return new Promise((resolve, reject) => {
-        db.get(
-            'SELECT * FROM sessions WHERE session_id = ?',
-            [sessionId],
-            (err, row) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(row || null);
-                }
-            }
-        );
-    });
-}
-
-/**
- * Delete session by session ID
- */
-function deleteSession(sessionId) {
-    return new Promise((resolve, reject) => {
-        db.run(
-            'DELETE FROM sessions WHERE session_id = ?',
-            [sessionId],
-            function (err) {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(this.changes > 0);
-                }
-            }
-        );
-    });
-}
-
-/**
- * Delete expired sessions (cleanup function)
- */
-function deleteExpiredSessions() {
-    return new Promise((resolve, reject) => {
-        const now = new Date().toISOString();
-
-        db.run(
-            'DELETE FROM sessions WHERE expires_at < ?',
-            [now],
-            function (err) {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(this.changes);
-                }
-            }
-        );
-    });
-}
-
 // Run cleanup every hour
 setInterval(() => {
     deleteExpiredResetTokens().catch(err => {
         console.error('Error cleaning up expired reset tokens:', err);
-    });
-    deleteExpiredSessions().catch(err => {
-        console.error('Error cleaning up expired sessions:', err);
     });
 }, 3600000); // 1 hour
 
@@ -370,9 +264,5 @@ module.exports = {
     createPasswordResetToken,
     getPasswordResetToken,
     deletePasswordResetToken,
-    deleteExpiredResetTokens,
-    createSession,
-    getSessionById,
-    deleteSession,
-    deleteExpiredSessions
+    deleteExpiredResetTokens
 };

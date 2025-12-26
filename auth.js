@@ -1,6 +1,5 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
 const {
     createUser,
     getUserByEmail,
@@ -9,10 +8,7 @@ const {
     updateUserProfile,
     createPasswordResetToken,
     getPasswordResetToken,
-    deletePasswordResetToken,
-    createSession,
-    getSessionById,
-    deleteSession
+    deletePasswordResetToken
 } = require('./authStorage');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -46,11 +42,6 @@ async function register(email, password, name) {
     const userId = await createUser(email, hashedPassword, name);
     const role = 'user'; // Default role for new registrations
 
-    // Generate session ID
-    const sessionId = uuidv4();
-    const sessionExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-    await createSession(userId, sessionId, sessionExpiresAt);
-
     // Generate tokens
     const accessToken = generateAccessToken(userId, email, role);
     const refreshToken = generateRefreshToken(userId, email, role);
@@ -64,7 +55,6 @@ async function register(email, password, name) {
             name,
             role
         },
-        sessionId,
         accessToken,
         refreshToken
     };
@@ -91,11 +81,6 @@ async function login(email, password) {
         throw new Error('Invalid email or password');
     }
 
-    // Generate session ID
-    const sessionId = uuidv4();
-    const sessionExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-    await createSession(user.id, sessionId, sessionExpiresAt);
-
     // Generate tokens
     const accessToken = generateAccessToken(user.id, user.email);
     const refreshToken = generateRefreshToken(user.id, user.email);
@@ -109,7 +94,6 @@ async function login(email, password) {
             name: user.name,
             createdAt: user.created_at
         },
-        sessionId,
         accessToken,
         refreshToken
     };
@@ -331,59 +315,6 @@ function verifyToken(token) {
     }
 }
 
-/**
- * Logout user by deleting session
- */
-async function logout(sessionId) {
-    if (!sessionId) {
-        throw new Error('Session ID is required');
-    }
-
-    const success = await deleteSession(sessionId);
-    if (!success) {
-        throw new Error('Session not found');
-    }
-
-    return {
-        success: true,
-        message: 'Logged out successfully'
-    };
-}
-
-/**
- * Validate session
- */
-async function validateSession(sessionId) {
-    if (!sessionId) {
-        return null;
-    }
-
-    const session = await getSessionById(sessionId);
-    if (!session) {
-        return null;
-    }
-
-    // Check if session is expired
-    if (new Date(session.expires_at) < new Date()) {
-        await deleteSession(sessionId);
-        return null;
-    }
-
-    // Get user details
-    const user = await getUserById(session.user_id);
-    if (!user) {
-        await deleteSession(sessionId);
-        return null;
-    }
-
-    return {
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role
-    };
-}
-
 module.exports = {
     register,
     login,
@@ -393,7 +324,5 @@ module.exports = {
     getUserProfile,
     updateProfile,
     changePassword,
-    verifyToken,
-    logout,
-    validateSession
+    verifyToken
 };
