@@ -1,47 +1,68 @@
-const { verifyToken } = require('./auth');
+const { validateSession, verifyToken } = require('./auth');
 
 /**
- * Middleware to authenticate requests using JWT
+ * Middleware to authenticate requests using session ID
  */
-function authenticateToken(req, res, next) {
-    // Get token from Authorization header
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+function authenticateSession(req, res, next) {
+    // Get session ID from header, body, or cookie
+    const sessionId = req.headers['x-session-id'] || req.body?.sessionId || req.cookies?.sessionId;
 
-    if (!token) {
+    if (!sessionId) {
         return res.status(401).json({
-            error: 'Access denied. No token provided.'
+            error: 'Access denied. Session ID required.'
         });
     }
 
     try {
-        // Verify token
-        const decoded = verifyToken(token);
+        // Validate session
+        validateSession(sessionId).then(sessionData => {
+            if (!sessionData) {
+                return res.status(401).json({
+                    error: 'Invalid or expired session.'
+                });
+            }
 
-        // Check if it's an access token
-        if (decoded.type !== 'access') {
-            return res.status(401).json({
-                error: 'Invalid token type. Please use an access token.'
-            });
-        }
+            // Attach user info to request
+            req.user = sessionData;
+            req.sessionId = sessionId;
 
-        // Attach user info to request
-        req.user = {
-            userId: decoded.userId,
-            email: decoded.email,
-            role: decoded.role
-        };
-
-        next();
+            next();
+        }).catch(err => {
+             return res.status(500).json({ error: 'Session validation error' });
+        });
     } catch (error) {
         return res.status(403).json({
-            error: 'Invalid or expired token.'
+            error: 'Session validation failed.'
         });
     }
 }
 
 /**
- * Optional authentication - doesn't fail if no token provided
+ * Middleware to authenticate requests using JWT token
+ */
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ error: 'Access denied. Token required.' });
+    }
+
+    try {
+        const decoded = verifyToken(token);
+        req.user = {
+            userId: decoded.userId,
+            email: decoded.email,
+            role: decoded.type
+        };
+        next();
+    } catch (error) {
+        return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
+}
+
+/**
+ * Optional authentication - doesn't fail if no code provided
  */
 function optionalAuth(req, res, next) {
     const authHeader = req.headers['authorization'];
@@ -83,6 +104,7 @@ function authorizeAdmin(req, res, next) {
 }
 
 module.exports = {
+    authenticateSession,
     authenticateToken,
     optionalAuth,
     authorizeAdmin

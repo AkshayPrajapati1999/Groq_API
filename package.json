@@ -18,6 +18,7 @@
     "express": "^4.22.1",
     "groq-sdk": "^0.37.0",
     "jsonwebtoken": "^9.0.3",
-    "sqlite3": "^5.1.6"
+    "sqlite3": "^5.1.6",
+    "uuid": "^13.0.0"
   }
 }
