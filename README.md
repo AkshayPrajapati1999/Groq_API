@@ -5,8 +5,9 @@ Routes a user query to either a create or schedule action using Groq for intent 
 ### Features
 - 🔐 **Complete Authentication System** - User registration, login, password reset, and profile management
 - 🤖 **AI-Powered Intent Detection** - Uses Groq AI to classify user queries
-- 📊 **Database Storage** - SQLite database for users and intents
+- 📊 **Database Storage** - SQLite database for users, intents, and sessions
 - 🔒 **JWT Authentication** - Secure token-based authentication
+- 🔄 **Session Management** - Auto-creating sessions handling for user queries
 - 📝 **RESTful API** - Well-documented API endpoints
 
 ### Setup
@@ -138,6 +139,28 @@ The server will run on `http://localhost:3000` (or the port specified in `PORT` 
   }
   ```
 
+  {
+    "action": "accept"
+  }
+  ```
+
+**Route a query with Session ID:**
+- **Method**: POST
+- **URL**: `http://localhost:3000/route`
+- **Body**:
+  ```json
+  {
+    "query": "schedule a meeting",
+    "sessionId": "project-alpha"
+  }
+  ```
+- *Note: If the session ID does not exist, it will be automatically created.*
+
+**View My Sessions:**
+- **Method**: GET
+- **URL**: `http://localhost:3000/sessions`
+- **Headers**: `Authorization: Bearer <TOKEN>`
+
 ### Automated Testing
 
 Run the authentication test suite:
@@ -158,7 +181,10 @@ The application uses SQLite with the following tables:
 - id, user_id, token, expires_at, created_at
 
 **intents** - User intents (create/schedule)
-- id, type, data, status
+- id, type, data, status, user_id
+
+**sessions** - User active sessions
+- id, user_id, created_at
 
 **responses** - API responses
 - id, data, timestamp

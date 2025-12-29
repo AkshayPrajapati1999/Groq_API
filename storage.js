@@ -20,6 +20,12 @@ db.serialize(() => {
     user_id TEXT
   )`);
 
+  db.run(`CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
+    created_at TEXT
+  )`);
+
   // Add user_id column if it doesn't exist (for existing databases)
   db.run(`ALTER TABLE intents ADD COLUMN user_id TEXT`, (err) => {
     if (err && !err.message.includes('duplicate column name')) {
@@ -36,10 +42,18 @@ function addResponse(response) {
 }
 
 function addIntent(type, intent, userId = null) {
-  const id = Date.now().toString();
-  const data = JSON.stringify(intent);
-  db.run('INSERT INTO intents (id, type, data, status, user_id) VALUES (?, ?, ?, ?, ?)', [id, type, data, 'pending', userId]);
-  return id;
+  return new Promise((resolve) => {
+    const id = Date.now().toString();
+    const data = JSON.stringify(intent);
+    db.run('INSERT INTO intents (id, type, data, status, user_id) VALUES (?, ?, ?, ?, ?)', [id, type, data, 'pending', userId], function(err) {
+      if (err) {
+        console.error('Error adding intent:', err);
+        resolve(null);
+      } else {
+        resolve(id);
+      }
+    });
+  });
 }
 
 function updateIntentStatus(id, status) {
@@ -81,15 +95,20 @@ function readIntents(userId = null) {
         return;
       }
       const intents = rows.map(row => {
-        const intent = JSON.parse(row.data);
-        intent.id = row.id;
-        intent.type = row.type;
-        intent.user_id = row.user_id;
-        if (row.type === 'schedule') {
-          intent.status = row.status;
+        try {
+          const intent = JSON.parse(row.data);
+          intent.id = row.id;
+          intent.type = row.type;
+          intent.user_id = row.user_id;
+          if (row.type === 'schedule') {
+            intent.status = row.status;
+          }
+          return intent;
+        } catch (e) {
+          console.error('Error parsing intent data:', e, 'Data:', row.data);
+          return null;
         }
-        return intent;
-      });
+      }).filter(intent => intent !== null);
       resolve(intents);
     });
   });
@@ -157,4 +176,49 @@ function deleteIntent(id) {
   });
 }
 
-module.exports = { addResponse, addIntent, updateIntentStatus, getIntent, readIntents, readCreates, readSchedules, deleteIntent };
+function getSession(id) {
+  return new Promise((resolve) => {
+    db.get('SELECT * FROM sessions WHERE id = ?', [id], (err, row) => {
+      resolve(row);
+    });
+  });
+}
+
+function createSession(id, userId) {
+  return new Promise((resolve, reject) => {
+    const createdAt = new Date().toISOString();
+    db.run('INSERT INTO sessions (id, user_id, created_at) VALUES (?, ?, ?)', [id, userId, createdAt], function (err) {
+      if (err) {
+        console.error('Error creating session:', err);
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+function readSessions(userId = null, isAdmin = false) {
+  return new Promise((resolve) => {
+    let query = 'SELECT * FROM sessions';
+    let params = [];
+
+    if (!isAdmin && userId) {
+      query += ' WHERE user_id = ?';
+      params.push(userId);
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    db.all(query, params, (err, rows) => {
+      if (err) {
+        console.error('Error reading sessions:', err);
+        resolve([]);
+        return;
+      }
+      resolve(rows);
+    });
+  });
+}
+
+module.exports = { addResponse, addIntent, updateIntentStatus, getIntent, readIntents, readCreates, readSchedules, deleteIntent, getSession, createSession, readSessions };

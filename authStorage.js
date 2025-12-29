@@ -137,6 +137,27 @@ function updateUserProfile(userId, name) {
 }
 
 /**
+ * Update user email
+ */
+function updateUserEmail(userId, email) {
+    return new Promise((resolve, reject) => {
+        const timestamp = new Date().toISOString();
+
+        db.run(
+            'UPDATE users SET email = ?, updated_at = ? WHERE id = ?',
+            [email.toLowerCase(), timestamp, userId],
+            function (err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.changes > 0);
+                }
+            }
+        );
+    });
+}
+
+/**
  * Update user role
  */
 function updateUserRole(userId, role) {
@@ -260,6 +281,7 @@ module.exports = {
     getUserById,
     updateUserPassword,
     updateUserProfile,
+    updateUserEmail,
     updateUserRole,
     createPasswordResetToken,
     getPasswordResetToken,

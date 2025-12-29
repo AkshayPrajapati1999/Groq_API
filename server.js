@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const { routeQuery } = require("./index");
-const { addResponse, updateIntentStatus, readIntents, readCreates, readSchedules, deleteIntent, getIntent } = require("./storage");
+const { addResponse, updateIntentStatus, readIntents, readCreates, readSchedules, deleteIntent, getIntent, getSession, createSession, readSessions } = require("./storage");
 const {
   register,
   login,
@@ -12,8 +12,8 @@ const {
   updateProfile,
   changePassword
 } = require("./auth");
-const { authenticateToken, optionalAuth, authorizeAdmin } = require("./authMiddleware");
-const { getUserByEmail } = require("./authStorage");
+const { authenticateToken, authenticateSession, optionalAuth, authorizeAdmin } = require("./authMiddleware");
+const { getUserByEmail, createUser } = require("./authStorage");
 
 const app = express();
 app.use(express.json());
@@ -108,7 +108,7 @@ app.post("/auth/reset-password", async (req, res) => {
  * Get user profile (protected)
  * Headers: Authorization: Bearer <token>
  */
-app.get("/auth/profile", authenticateToken, async (req, res) => {
+app.get("/auth/profile", authenticateSession, async (req, res) => {
   try {
     const result = await getUserProfile(req.user.userId);
     res.json(result);
@@ -123,7 +123,7 @@ app.get("/auth/profile", authenticateToken, async (req, res) => {
  * Headers: Authorization: Bearer <token>
  * Body: { name }
  */
-app.put("/auth/profile", authenticateToken, async (req, res) => {
+app.put("/auth/profile", authenticateSession, async (req, res) => {
   try {
     const result = await updateProfile(req.user.userId, req.body);
     res.json(result);
@@ -138,13 +138,28 @@ app.put("/auth/profile", authenticateToken, async (req, res) => {
  * Headers: Authorization: Bearer <token>
  * Body: { currentPassword, newPassword }
  */
-app.post("/auth/change-password", authenticateToken, async (req, res) => {
+app.post("/auth/change-password", authenticateSession, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const result = await changePassword(req.user.userId, currentPassword, newPassword);
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /session
+ * Create a new session for the authenticated user
+ * Headers: Authorization: Bearer <token>
+ */
+app.post("/session", authenticateToken, async (req, res) => {
+  try {
+    const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    await createSession(sessionId, req.user.userId);
+    res.json({ sessionId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -156,10 +171,41 @@ app.post("/auth/change-password", authenticateToken, async (req, res) => {
  * POST /route
  * Route a query (Authenticated)
  */
-app.post("/route", authenticateToken, async (req, res) => {
+app.post("/route", async (req, res) => {
   const userQuery = req.body?.query;
-  const userId = req.user.userId;
-  const userEmail = req.user.email;
+  let sessionId = req.body?.sessionId || req.headers['session-id'] || req.headers['Session-Id'];
+  const sessionProvided = !!(req.body?.sessionId || req.headers['session-id'] || req.headers['Session-Id']);
+  let userId;
+  let userEmail;
+
+  // Get or create anonymous user
+  let anonymousUser = await getUserByEmail('anonymous@example.com');
+  if (!anonymousUser) {
+    const hashedPassword = await require('bcryptjs').hash('anonymous', 10);
+    const anonymousId = await createUser('anonymous@example.com', hashedPassword, 'Anonymous User');
+    anonymousUser = { id: anonymousId, email: 'anonymous@example.com' };
+  }
+
+  if (sessionId) {
+    const session = await getSession(sessionId);
+    if (session) {
+      userId = session.user_id;
+      const user = await require('./authStorage').getUserById(userId);
+      userEmail = user ? user.email : 'unknown';
+    } else {
+      // Session doesn't exist, create new for anonymous
+      sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      userId = anonymousUser.id;
+      userEmail = 'anonymous@example.com';
+      await createSession(sessionId, userId);
+    }
+  } else {
+    // No sessionId provided, create new for anonymous
+    sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    userId = anonymousUser.id;
+    userEmail = 'anonymous@example.com';
+    await createSession(sessionId, userId);
+  }
 
   if (!userQuery) {
     return res.status(400).json({ error: "Missing 'query' in body" });
@@ -168,7 +214,11 @@ app.post("/route", authenticateToken, async (req, res) => {
   try {
     console.log(`Processing query for ${userEmail}: ${userQuery}`);
     const result = await routeQuery(userQuery, userId);
-    res.json(result);
+    const response = { ...result };
+    if (!sessionProvided) {
+      response.sessionId = sessionId;
+    }
+    res.json(response);
     addResponse(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -179,10 +229,8 @@ app.post("/route", authenticateToken, async (req, res) => {
  * GET /intents
  * View intents (User sees own, Admin sees all)
  */
-app.get("/intents", authenticateToken, async (req, res) => {
-  const { userId, role } = req.user;
-  const isAdmin = role === 'admin';
-  const intents = await readIntents(userId, isAdmin);
+app.get("/intents", authenticateSession, async (req, res) => {
+  const intents = await readIntents(null, true); // Show all intents
   res.json(intents);
 });
 
@@ -190,7 +238,7 @@ app.get("/intents", authenticateToken, async (req, res) => {
  * GET /creates
  * View create intents (User sees own)
  */
-app.get("/creates", authenticateToken, async (req, res) => {
+app.get("/creates", authenticateSession, async (req, res) => {
   const { userId } = req.user;
   const creates = await readCreates(userId);
   res.json(creates);
@@ -200,17 +248,28 @@ app.get("/creates", authenticateToken, async (req, res) => {
  * GET /schedules
  * View schedule intents (User sees own)
  */
-app.get("/schedules", authenticateToken, async (req, res) => {
+app.get("/schedules", authenticateSession, async (req, res) => {
   const { userId } = req.user;
   const schedules = await readSchedules(userId);
   res.json(schedules);
 });
 
 /**
+ * GET /sessions
+ * View sessions (User sees own)
+ */
+app.get("/sessions", authenticateSession, async (req, res) => {
+  const { userId, role } = req.user;
+  const isAdmin = role === 'admin';
+  const sessions = await readSessions(userId, isAdmin);
+  res.json(sessions);
+});
+
+/**
  * POST /create/:id
  * Accept/Reject create (Owner or Admin)
  */
-app.post("/create/:id", authenticateToken, async (req, res) => {
+app.post("/create/:id", authenticateSession, async (req, res) => {
   const { id } = req.params;
   const { action } = req.body;
   const { userId, role } = req.user;
@@ -244,7 +303,7 @@ app.post("/create/:id", authenticateToken, async (req, res) => {
  * POST /schedule/:id
  * Accept/Reject schedule (Owner only)
  */
-app.post("/schedule/:id", authenticateToken, async (req, res) => {
+app.post("/schedule/:id", authenticateSession, async (req, res) => {
   const { id } = req.params;
   const { action } = req.body;
   const { userId } = req.user;
@@ -278,7 +337,7 @@ app.post("/schedule/:id", authenticateToken, async (req, res) => {
  * DELETE /intent/:id
  * Delete intent (Owner only)
  */
-app.delete("/intent/:id", authenticateToken, async (req, res) => {
+app.delete("/intent/:id", authenticateSession, async (req, res) => {
   const { id } = req.params;
   const { userId } = req.user;
 

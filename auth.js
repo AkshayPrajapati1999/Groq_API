@@ -6,10 +6,12 @@ const {
     getUserById,
     updateUserPassword,
     updateUserProfile,
+    updateUserEmail,
     createPasswordResetToken,
     getPasswordResetToken,
     deletePasswordResetToken
 } = require('./authStorage');
+const { createSession } = require('./storage');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
@@ -46,6 +48,10 @@ async function register(email, password, name) {
     const accessToken = generateAccessToken(userId, email, role);
     const refreshToken = generateRefreshToken(userId, email, role);
 
+    // Create session
+    const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    await createSession(sessionId, userId);
+
     return {
         success: true,
         message: 'User registered successfully',
@@ -56,7 +62,8 @@ async function register(email, password, name) {
             role
         },
         accessToken,
-        refreshToken
+        refreshToken,
+        sessionId
     };
 }
 
@@ -85,6 +92,10 @@ async function login(email, password) {
     const accessToken = generateAccessToken(user.id, user.email);
     const refreshToken = generateRefreshToken(user.id, user.email);
 
+    // Create session
+    const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    await createSession(sessionId, user.id);
+
     return {
         success: true,
         message: 'Login successful',
@@ -95,7 +106,8 @@ async function login(email, password) {
             createdAt: user.created_at
         },
         accessToken,
-        refreshToken
+        refreshToken,
+        sessionId
     };
 }
 
@@ -217,7 +229,7 @@ async function getUserProfile(userId) {
 }
 
 /**
- * Update user profile
+ * Update user profile (name and/or email)
  */
 async function updateProfile(userId, updates) {
     const user = await getUserById(userId);
@@ -225,22 +237,35 @@ async function updateProfile(userId, updates) {
         throw new Error('User not found');
     }
 
-    // Only allow updating name for now
-    const { name } = updates;
-    if (!name) {
-        throw new Error('Name is required');
+    const { name, email } = updates;
+    if (!name && !email) {
+        throw new Error('Name or email is required');
     }
 
-    await updateUserProfile(userId, name);
+    if (name) {
+        await updateUserProfile(userId, name);
+    }
+
+    if (email) {
+        // Check if email is already taken by another user
+        const existingUser = await getUserByEmail(email);
+        if (existingUser && existingUser.id !== userId) {
+            throw new Error('Email is already in use');
+        }
+        await updateUserEmail(userId, email);
+    }
+
+    // Get updated user
+    const updatedUser = await getUserById(userId);
 
     return {
         success: true,
         message: 'Profile updated successfully',
         user: {
             id: userId,
-            email: user.email,
-            name,
-            createdAt: user.created_at
+            email: updatedUser.email,
+            name: updatedUser.name,
+            createdAt: updatedUser.created_at
         }
     };
 }

@@ -1,4 +1,49 @@
 const { verifyToken } = require('./auth');
+const { getSession } = require('./storage');
+const { getUserById } = require('./authStorage');
+
+/**
+ * Middleware to authenticate requests using session ID
+ */
+function authenticateSession(req, res, next) {
+    const sessionId = req.headers['session-id'] || req.headers['Session-Id'];
+
+    if (!sessionId) {
+        return res.status(401).json({
+            error: 'Access denied. No session ID provided.'
+        });
+    }
+
+    getSession(sessionId).then(session => {
+        if (!session) {
+            return res.status(401).json({
+                error: 'Invalid session ID.'
+            });
+        }
+
+        getUserById(session.user_id).then(user => {
+            if (!user) {
+                return res.status(401).json({
+                    error: 'User not found.'
+                });
+            }
+
+            req.user = {
+                userId: user.id,
+                email: user.email,
+                role: user.role
+            };
+
+            next();
+        }).catch(err => {
+            console.error('Error fetching user:', err);
+            res.status(500).json({ error: 'Internal server error' });
+        });
+    }).catch(err => {
+        console.error('Error fetching session:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    });
+}
 
 /**
  * Middleware to authenticate requests using JWT
@@ -84,6 +129,7 @@ function authorizeAdmin(req, res, next) {
 
 module.exports = {
     authenticateToken,
+    authenticateSession,
     optionalAuth,
     authorizeAdmin
 };

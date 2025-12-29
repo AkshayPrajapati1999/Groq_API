@@ -15,7 +15,7 @@ async function routeQuery(userQuery, userId = null) {
   const result = await inferIntent(groq, userQuery);
 
   if (result.intent === "create" || result.intent === "schedule") {
-    const id = addIntent(result.intent, result, userId);
+    const id = await addIntent(result.intent, result, userId);
     result.id = id;
     return result;
   } else {

@@ -24,6 +24,11 @@
             "key": "resetToken",
             "value": "",
             "type": "string"
+        },
+        {
+            "key": "sessionId",
+            "value": "",
+            "type": "string"
         }
     ],
     "item": [
@@ -41,6 +46,7 @@
                                     "    const jsonData = pm.response.json();",
                                     "    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
                                     "    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+                                    "    pm.collectionVariables.set('sessionId', jsonData.sessionId);",
                                     "    pm.test('Registration successful', () => {",
                                     "        pm.expect(jsonData.success).to.be.true;",
                                     "    });",
@@ -85,6 +91,7 @@
                                     "    const jsonData = pm.response.json();",
                                     "    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
                                     "    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+                                    "    pm.collectionVariables.set('sessionId', jsonData.sessionId);",
                                     "    pm.test('Login successful', () => {",
                                     "        pm.expect(jsonData.success).to.be.true;",
                                     "    });",
@@ -124,8 +131,8 @@
                         "method": "GET",
                         "header": [
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{accessToken}}"
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
                             }
                         ],
                         "url": {
@@ -151,8 +158,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{accessToken}}"
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
                             }
                         ],
                         "body": {
@@ -182,8 +189,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{accessToken}}"
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
                             }
                         ],
                         "body": {
@@ -322,16 +329,27 @@
             "item": [
                 {
                     "name": "Route Query",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    const jsonData = pm.response.json();",
+                                    "    if (jsonData.sessionId) {",
+                                    "        pm.collectionVariables.set('sessionId', jsonData.sessionId);",
+                                    "    }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
                     "request": {
                         "method": "POST",
                         "header": [
                             {
                                 "key": "Content-Type",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{accessToken}}"
                             }
                         ],
                         "body": {
@@ -356,8 +374,8 @@
                         "method": "GET",
                         "header": [
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{accessToken}}"
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
                             }
                         ],
                         "url": {
@@ -378,8 +396,8 @@
                         "method": "GET",
                         "header": [
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{accessToken}}"
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
                             }
                         ],
                         "url": {
@@ -400,8 +418,8 @@
                         "method": "GET",
                         "header": [
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{accessToken}}"
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
                             }
                         ],
                         "url": {
@@ -426,8 +444,8 @@
                                 "value": "application/json"
                             },
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{accessToken}}"
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
                             }
                         ],
                         "body": {
@@ -459,8 +477,8 @@
                         "method": "DELETE",
                         "header": [
                             {
-                                "key": "Authorization",
-                                "value": "Bearer {{accessToken}}"
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
                             }
                         ],
                         "url": {
