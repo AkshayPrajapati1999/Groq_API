@@ -11,21 +11,6 @@
             "type": "string"
         },
         {
-            "key": "accessToken",
-            "value": "",
-            "type": "string"
-        },
-        {
-            "key": "refreshToken",
-            "value": "",
-            "type": "string"
-        },
-        {
-            "key": "resetToken",
-            "value": "",
-            "type": "string"
-        },
-        {
             "key": "sessionId",
             "value": "",
             "type": "string"
@@ -36,7 +21,7 @@
             "name": "Authentication",
             "item": [
                 {
-                    "name": "Register User",
+                    "name": "Register",
                     "event": [
                         {
                             "listen": "test",
@@ -44,8 +29,7 @@
                                 "exec": [
                                     "if (pm.response.code === 201) {",
                                     "    const jsonData = pm.response.json();",
-                                    "    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
-                                    "    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+                                    "    pm.collectionVariables.set('sessionId', jsonData.sessionId);",
                                     "    pm.test('Registration successful', () => {",
                                     "        pm.expect(jsonData.success).to.be.true;",
                                     "    });",
@@ -64,7 +48,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"Test User\"\n}"
+                            "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"Test User\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/auth/register",
@@ -80,7 +64,7 @@
                     }
                 },
                 {
-                    "name": "Login User",
+                    "name": "Login",
                     "event": [
                         {
                             "listen": "test",
@@ -88,8 +72,7 @@
                                 "exec": [
                                     "if (pm.response.code === 200) {",
                                     "    const jsonData = pm.response.json();",
-                                    "    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
-                                    "    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+                                    "    pm.collectionVariables.set('sessionId', jsonData.sessionId);",
                                     "    pm.test('Login successful', () => {",
                                     "        pm.expect(jsonData.success).to.be.true;",
                                     "    });",
@@ -108,7 +91,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+                            "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/auth/login",
@@ -143,7 +126,7 @@
                                 "profile"
                             ]
                         },
-                        "description": "Get authenticated user's profile"
+                        "description": "Get user profile"
                     }
                 },
                 {
@@ -162,7 +145,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"name\": \"Updated Name\"\n}"
+                            "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"newemail@example.com\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/auth/profile",
@@ -176,197 +159,11 @@
                         },
                         "description": "Update user profile"
                     }
-                },
-                {
-                    "name": "Change Password",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Session-Id",
-                                "value": "{{sessionId}}"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"currentPassword\": \"password123\",\n  \"newPassword\": \"newPassword456\"\n}"
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/auth/change-password",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "auth",
-                                "change-password"
-                            ]
-                        },
-                        "description": "Change user password"
-                    }
-                },
-                {
-                    "name": "Refresh Token",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "exec": [
-                                    "if (pm.response.code === 200) {",
-                                    "    const jsonData = pm.response.json();",
-                                    "    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
-                                    "    pm.test('Token refreshed', () => {",
-                                    "        pm.expect(jsonData.success).to.be.true;",
-                                    "    });",
-                                    "}"
-                                ]
-                            }
-                        }
-                    ],
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/auth/refresh",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "auth",
-                                "refresh"
-                            ]
-                        },
-                        "description": "Refresh access token using refresh token"
-                    }
-                },
-                {
-                    "name": "Forgot Password",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "exec": [
-                                    "if (pm.response.code === 200) {",
-                                    "    const jsonData = pm.response.json();",
-                                    "    if (jsonData.resetToken) {",
-                                    "        pm.collectionVariables.set('resetToken', jsonData.resetToken);",
-                                    "    }",
-                                    "}"
-                                ]
-                            }
-                        }
-                    ],
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"email\": \"test@example.com\"\n}"
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/auth/forgot-password",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "auth",
-                                "forgot-password"
-                            ]
-                        },
-                        "description": "Request password reset token"
-                    }
-                },
-                {
-                    "name": "Reset Password",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"resetToken\": \"{{resetToken}}\",\n  \"newPassword\": \"newPassword789\"\n}"
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/auth/reset-password",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "auth",
-                                "reset-password"
-                            ]
-                        },
-                        "description": "Reset password using reset token"
-                    }
                 }
             ]
         },
         {
-            "name": "Session Management",
-            "item": [
-                {
-                    "name": "Create Session",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "exec": [
-                                    "if (pm.response.code === 200) {",
-                                    "    const jsonData = pm.response.json();",
-                                    "    pm.collectionVariables.set('sessionId', jsonData.sessionId);",
-                                    "    pm.test('Session created', () => {",
-                                    "        pm.expect(jsonData.sessionId).to.be.a('string');",
-                                    "    });",
-                                    "}"
-                                ]
-                            }
-                        }
-                    ],
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Authorization",
-                                "value": "Bearer {{accessToken}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{baseUrl}}/session",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "session"
-                            ]
-                        },
-                        "description": "Create a new session for the authenticated user"
-                    }
-                }
-            ]
-        },
-        {
-            "name": "Intent Routes",
+            "name": "Intents",
             "item": [
                 {
                     "name": "Route Query",
@@ -406,7 +203,7 @@
                                 "route"
                             ]
                         },
-                        "description": "Route a user query to create or schedule"
+                        "description": "Route user query to create or schedule intent"
                     }
                 },
                 {
@@ -432,7 +229,7 @@
                     }
                 },
                 {
-                    "name": "Get Creates",
+                    "name": "Get Create Intents",
                     "request": {
                         "method": "GET",
                         "header": [
@@ -450,11 +247,11 @@
                                 "creates"
                             ]
                         },
-                        "description": "Get all create intents"
+                        "description": "Get create intents"
                     }
                 },
                 {
-                    "name": "Get Schedules",
+                    "name": "Get Schedule Intents",
                     "request": {
                         "method": "GET",
                         "header": [
@@ -472,7 +269,7 @@
                                 "schedules"
                             ]
                         },
-                        "description": "Get all schedule intents"
+                        "description": "Get schedule intents"
                     }
                 },
                 {
@@ -509,7 +306,7 @@
                                 }
                             ]
                         },
-                        "description": "Accept or reject a schedule intent"
+                        "description": "Accept or reject schedule intent"
                     }
                 },
                 {
