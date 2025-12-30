@@ -207,25 +207,33 @@
                     }
                 },
                 {
-                    "name": "Get All Intents",
+                    "name": "Route Query with Session",
                     "request": {
-                        "method": "GET",
+                        "method": "POST",
                         "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
                             {
                                 "key": "Session-Id",
                                 "value": "{{sessionId}}"
                             }
                         ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"query\": \"create a new project\"\n}"
+                        },
                         "url": {
-                            "raw": "{{baseUrl}}/intents",
+                            "raw": "{{baseUrl}}/route",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
-                                "intents"
+                                "route"
                             ]
                         },
-                        "description": "Get all intents"
+                        "description": "Route user query with existing session"
                     }
                 },
                 {
@@ -273,7 +281,7 @@
                     }
                 },
                 {
-                    "name": "Accept/Reject Schedule",
+                    "name": "Accept/Reject Schedule Intent",
                     "request": {
                         "method": "POST",
                         "header": [

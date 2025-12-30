@@ -3,11 +3,11 @@
 Routes a user query to either a create or schedule action using Groq for intent classification (with a fast keyword shortcut).
 
 ### Features
-- 🔐 **Complete Authentication System** - User registration, login, password reset, and profile management
-- 🤖 **AI-Powered Intent Detection** - Uses Groq AI to classify user queries
+- 🔐 **Complete Authentication System** - User registration, login, JWT tokens, and profile management
+- 🤖 **AI-Powered Intent Detection** - Uses Groq AI to classify user queries as create or schedule
 - 📊 **Database Storage** - SQLite database for users, intents, and sessions
 - 🔒 **JWT Authentication** - Secure token-based authentication
-- 🔄 **Session Management** - Auto-creating sessions handling for user queries
+- 🔄 **Session Management** - Automatic session creation for anonymous users
 - 📝 **RESTful API** - Well-documented API endpoints
 
 ### Setup
@@ -33,10 +33,10 @@ Routes a user query to either a create or schedule action using Groq for intent 
 
 4. **Run the application:**
    ```bash
-   # Run CLI version
+   # CLI version
    npm start -- "schedule a meeting tomorrow"
-   
-   # Run API server
+
+   # Express API server
    npm run serve
    ```
 
@@ -47,23 +47,32 @@ Routes a user query to either a create or schedule action using Groq for intent 
 - `authStorage.js` manages database operations for users and tokens
 - `authMiddleware.js` provides JWT authentication middleware for protected routes
 
-### Authentication API
+### API Endpoints
 
-The application includes a complete authentication system with the following endpoints:
+The application provides RESTful API endpoints for authentication and intent routing.
 
-#### Public Endpoints (No authentication required)
-- `POST /auth/register` - Register a new user
-- `POST /auth/login` - Login and receive tokens
-- `POST /auth/refresh` - Refresh access token
-- `POST /auth/forgot-password` - Request password reset
-- `POST /auth/reset-password` - Reset password with token
+#### Authentication Endpoints
 
-#### Protected Endpoints (Requires authentication)
-- `GET /auth/profile` - Get user profile
-- `PUT /auth/profile` - Update user profile
-- `POST /auth/change-password` - Change password
+**Public Endpoints (No authentication required):**
+- `POST /auth/register` - Register a new user account
+- `POST /auth/login` - Login and receive access tokens
 
-For detailed API documentation, see [AUTH_API_DOCUMENTATION.md](./AUTH_API_DOCUMENTATION.md)
+**Protected Endpoints (Requires Authorization header):**
+- `GET /auth/profile` - Get user profile information
+- `PUT /auth/profile` - Update user profile (name, email)
+
+#### Intent Management Endpoints
+
+**Route Query:**
+- `POST /route` - Route user query to create or schedule intent (auto-creates session if none provided)
+- `POST /route` with `Session-Id` header - Route query with existing session
+
+**Intent Operations (Protected):**
+- `GET /creates` - Get user's create intents
+- `GET /schedules` - Get user's schedule intents
+- `POST /create/:id` - Accept or reject an intent
+
+All protected endpoints require an `Authorization: Bearer <TOKEN>` header.
 
 ### Testing with Postman
 
@@ -87,6 +96,7 @@ The server will run on `http://localhost:3000` (or the port specified in `PORT` 
     "name": "Test User"
   }
   ```
+- **Response**: Returns access token for subsequent requests
 
 **Login:**
 - **Method**: POST
@@ -99,18 +109,32 @@ The server will run on `http://localhost:3000` (or the port specified in `PORT` 
     "password": "password123"
   }
   ```
-- **Response**: Save the `accessToken` for protected routes
+- **Response**: Returns access token, save for protected routes
 
 **Get Profile (Protected):**
 - **Method**: GET
 - **URL**: `http://localhost:3000/auth/profile`
-- **Headers**: 
+- **Headers**:
   - `Content-Type: application/json`
   - `Authorization: Bearer YOUR_ACCESS_TOKEN`
 
+**Update Profile (Protected):**
+- **Method**: PUT
+- **URL**: `http://localhost:3000/auth/profile`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer YOUR_ACCESS_TOKEN`
+- **Body**:
+  ```json
+  {
+    "name": "Updated Name",
+    "email": "newemail@example.com"
+  }
+  ```
+
 #### 3. Test Intent Routing:
 
-**Route a query:**
+**Route a query (creates anonymous session):**
 - **Method**: POST
 - **URL**: `http://localhost:3000/route`
 - **Headers**: `Content-Type: application/json`
@@ -120,46 +144,43 @@ The server will run on `http://localhost:3000` (or the port specified in `PORT` 
     "query": "schedule a meeting tomorrow"
   }
   ```
+- **Response**: Returns intent result and auto-generated session ID
 
-**Get all intents:**
-- **Method**: GET
-- **URL**: `http://localhost:3000/intents`
-
-**Get schedules:**
-- **Method**: GET
-- **URL**: `http://localhost:3000/schedules`
-
-**Accept/Reject schedule:**
-- **Method**: POST
-- **URL**: `http://localhost:3000/schedule/:id`
-- **Body**:
-  ```json
-  {
-    "action": "accept"
-  }
-  ```
-
-  {
-    "action": "accept"
-  }
-  ```
-
-**Route a query with Session ID:**
+**Route a query with existing session:**
 - **Method**: POST
 - **URL**: `http://localhost:3000/route`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Session-Id: YOUR_SESSION_ID`
 - **Body**:
   ```json
   {
-    "query": "schedule a meeting",
-    "sessionId": "project-alpha"
+    "query": "create a new project plan"
   }
   ```
-- *Note: If the session ID does not exist, it will be automatically created.*
 
-**View My Sessions:**
+**Get create intents:**
 - **Method**: GET
-- **URL**: `http://localhost:3000/sessions`
-- **Headers**: `Authorization: Bearer <TOKEN>`
+- **URL**: `http://localhost:3000/creates`
+- **Headers**: `Authorization: Bearer YOUR_ACCESS_TOKEN`
+
+**Get schedule intents:**
+- **Method**: GET
+- **URL**: `http://localhost:3000/schedules`
+- **Headers**: `Authorization: Bearer YOUR_ACCESS_TOKEN`
+
+**Accept/Reject intent:**
+- **Method**: POST
+- **URL**: `http://localhost:3000/create/INTENT_ID_HERE`
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer YOUR_ACCESS_TOKEN`
+- **Body**:
+  ```json
+  {
+    "action": "accept"
+  }
+  ```
 
 ### Automated Testing
 
