@@ -72,6 +72,13 @@ The application provides RESTful API endpoints for authentication and intent rou
 - `GET /schedules` - Get user's schedule intents
 - `POST /create/:id` - Accept or reject an intent
 
+**Brand Management (Protected):**
+- `POST /brands` - Create a new brand profile
+- `GET /brands` - List all brands associated with the user
+- `GET /brands/:id` - Get specific brand details
+- `PUT /brands/:id` - Update brand information
+- `DELETE /brands/:id` - Remove a brand
+
 All protected endpoints require an `Authorization: Bearer <TOKEN>` header.
 
 ### Testing with Postman
@@ -210,6 +217,9 @@ The application uses SQLite with the following tables:
 **responses** - API responses
 - id, data, timestamp
 
+**brands** - User brand profiles
+- id, user_id, name, description, industry, website, target_audience, brand_voice, created_at, updated_at
+
 ### Security Features
 
 - ✅ Password hashing with bcrypt
@@ -227,6 +237,7 @@ groq-intent/
 ├── auth.js                      # Authentication logic
 ├── authStorage.js               # Database operations for auth
 ├── authMiddleware.js            # JWT middleware
+├── brand.js                     # Brand management logic
 ├── intent.js                    # Intent detection
 ├── index.js                     # Main routing logic
 ├── server.js                    # Express API server

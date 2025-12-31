@@ -17,7 +17,8 @@ db.serialize(() => {
     type TEXT,
     data TEXT,
     status TEXT DEFAULT 'pending',
-    user_id TEXT
+    user_id TEXT,
+    brand_id TEXT
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS sessions (
@@ -32,6 +33,13 @@ db.serialize(() => {
       console.error('Error adding user_id column:', err);
     }
   });
+
+  // Add brand_id column if it doesn't exist
+  db.run(`ALTER TABLE intents ADD COLUMN brand_id TEXT`, (err) => {
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding brand_id column:', err);
+    }
+  });
 });
 
 function addResponse(response) {
@@ -41,11 +49,11 @@ function addResponse(response) {
   db.run('INSERT INTO responses (id, data, timestamp) VALUES (?, ?, ?)', [id, data, timestamp]);
 }
 
-function addIntent(type, intent, userId = null) {
+function addIntent(type, intent, userId = null, brandId = null) {
   return new Promise((resolve) => {
     const id = Date.now().toString();
     const data = JSON.stringify(intent);
-    db.run('INSERT INTO intents (id, type, data, status, user_id) VALUES (?, ?, ?, ?, ?)', [id, type, data, 'pending', userId], function (err) {
+    db.run('INSERT INTO intents (id, type, data, status, user_id, brand_id) VALUES (?, ?, ?, ?, ?, ?)', [id, type, data, 'pending', userId, brandId], function (err) {
       if (err) {
         console.error('Error adding intent:', err);
         resolve(null);
@@ -73,6 +81,7 @@ function getIntent(id) {
         intent.type = row.type;
         intent.status = row.status;
         intent.user_id = row.user_id;
+        intent.brand_id = row.brand_id;
         resolve(intent);
       } else {
         resolve(null);
@@ -100,6 +109,7 @@ function readIntents(userId = null) {
           intent.id = row.id;
           intent.type = row.type;
           intent.user_id = row.user_id;
+          intent.brand_id = row.brand_id;
           if (row.type === 'schedule') {
             intent.status = row.status;
           }
@@ -134,7 +144,8 @@ function readCreates(userId = null) {
           image_generation_prompt: intent.image_generation_prompt,
           caption_prompt: intent.caption_prompt,
           id: row.id,
-          user_id: row.user_id
+          user_id: row.user_id,
+          brand_id: row.brand_id
         };
       });
       resolve(intents);
@@ -161,6 +172,7 @@ function readSchedules(userId = null, isAdmin = false) {
         intent.type = row.type;
         intent.status = row.status;
         intent.user_id = row.user_id;
+        intent.brand_id = row.brand_id;
         return intent;
       });
       resolve(intents);

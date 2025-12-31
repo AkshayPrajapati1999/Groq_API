@@ -11,12 +11,26 @@ if (!apiKey) {
 
 const groq = new Groq({ apiKey });
 
-async function routeQuery(userQuery, userId = null) {
-  const result = await inferIntent(groq, userQuery);
+async function routeQuery(userQuery, userId = null, brandId = null) {
+  let brandData = null;
+  if (brandId && userId) {
+    try {
+      const { getBrandById } = require("./authStorage");
+      brandData = await getBrandById(brandId);
+      if (brandData && brandData.user_id !== userId) {
+        brandData = null; // Security: ensure brand belongs to user
+      }
+    } catch (err) {
+      console.error("Error fetching brand data:", err);
+    }
+  }
+
+  const result = await inferIntent(groq, userQuery, brandData);
 
   if (result.intent === "create" || result.intent === "schedule") {
-    const id = await addIntent(result.intent, result, userId);
+    const id = await addIntent(result.intent, result, userId, brandId);
     result.id = id;
+    result.brandId = brandId;
     return result;
   } else {
     throw new Error(`Unable to resolve intent (got "${result.intent}") for: ${userQuery}`);

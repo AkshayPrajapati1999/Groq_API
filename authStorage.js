@@ -27,11 +27,55 @@ db.serialize(() => {
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
+    // Brands table
+    db.run(`CREATE TABLE IF NOT EXISTS brands (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    tagline TEXT,
+    description TEXT,
+    mission TEXT,
+    vision TEXT,
+    industry TEXT,
+    website_url TEXT,
+    logo_url TEXT,
+    logo_position TEXT,
+    primary_color TEXT,
+    secondary_color TEXT,
+    heading_font TEXT,
+    body_font TEXT,
+    brand_guidelines_url TEXT,
+    date_format TEXT,
+    target_audience TEXT,
+    brand_voice TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
+
+    // Add new columns to existing brands table if they don't exist
+    const newColumns = [
+        'tagline', 'mission', 'vision', 'website_url', 'logo_url',
+        'logo_position', 'primary_color', 'secondary_color',
+        'heading_font', 'body_font', 'brand_guidelines_url', 'date_format'
+    ];
+
+    newColumns.forEach(col => {
+        db.run(`ALTER TABLE brands ADD COLUMN ${col} TEXT`, (err) => {
+            if (err && !err.message.includes('duplicate column name')) {
+                console.error(`Error adding ${col} column to brands:`, err);
+            }
+        });
+    });
+
     // Create index on email for faster lookups
     db.run(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
 
     // Create index on reset tokens
     db.run(`CREATE INDEX IF NOT EXISTS idx_reset_tokens ON password_reset_tokens(token)`);
+
+    // Create index on brand user_id
+    db.run(`CREATE INDEX IF NOT EXISTS idx_brands_user_id ON brands(user_id)`);
 });
 
 /**
@@ -275,6 +319,142 @@ setInterval(() => {
     });
 }, 3600000); // 1 hour
 
+/**
+ * Create a new brand
+ */
+function createBrand(userId, name, brandData) {
+    return new Promise((resolve, reject) => {
+        const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+        const timestamp = new Date().toISOString();
+        const {
+            tagline, description, mission, vision, industry, website_url,
+            logo_url, logo_position, primary_color, secondary_color,
+            heading_font, body_font, brand_guidelines_url, date_format,
+            target_audience, brand_voice
+        } = brandData;
+
+        db.run(
+            `INSERT INTO brands (
+                id, user_id, name, tagline, description, mission, vision, industry, 
+                website_url, logo_url, logo_position, primary_color, secondary_color, 
+                heading_font, body_font, brand_guidelines_url, date_format, 
+                target_audience, brand_voice, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                id, userId, name, tagline, description, mission, vision, industry,
+                website_url, logo_url, logo_position, primary_color, secondary_color,
+                heading_font, body_font, brand_guidelines_url, date_format,
+                target_audience, brand_voice, timestamp, timestamp
+            ],
+            function (err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(id);
+                }
+            }
+        );
+    });
+}
+
+/**
+ * Get brands by user ID
+ */
+function getBrandsByUserId(userId) {
+    return new Promise((resolve, reject) => {
+        db.all(
+            'SELECT * FROM brands WHERE user_id = ? ORDER BY created_at DESC',
+            [userId],
+            (err, rows) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(rows);
+                }
+            }
+        );
+    });
+}
+
+/**
+ * Get brand by ID
+ */
+function getBrandById(brandId) {
+    return new Promise((resolve, reject) => {
+        db.get(
+            'SELECT * FROM brands WHERE id = ?',
+            [brandId],
+            (err, row) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(row || null);
+                }
+            }
+        );
+    });
+}
+
+/**
+ * Update brand
+ */
+function updateBrand(brandId, updates) {
+    return new Promise((resolve, reject) => {
+        const timestamp = new Date().toISOString();
+        const validFields = [
+            'name', 'tagline', 'description', 'mission', 'vision', 'industry',
+            'website_url', 'logo_url', 'logo_position', 'primary_color',
+            'secondary_color', 'heading_font', 'body_font',
+            'brand_guidelines_url', 'date_format', 'target_audience', 'brand_voice'
+        ];
+
+        for (const [key, value] of Object.entries(updates)) {
+            if (validFields.includes(key)) {
+                fields.push(`${key} = ?`);
+                values.push(value);
+            }
+        }
+
+        if (fields.length === 0) {
+            resolve(false);
+            return;
+        }
+
+        fields.push('updated_at = ?');
+        values.push(timestamp);
+        values.push(brandId);
+
+        const query = `UPDATE brands SET ${fields.join(', ')} WHERE id = ?`;
+
+        db.run(query, values, function (err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes > 0);
+            }
+        });
+    });
+}
+
+/**
+ * Delete brand
+ */
+function deleteBrand(brandId) {
+    return new Promise((resolve, reject) => {
+        db.run(
+            'DELETE FROM brands WHERE id = ?',
+            [brandId],
+            function (err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.changes > 0);
+                }
+            }
+        );
+    });
+}
+
 module.exports = {
     createUser,
     getUserByEmail,
@@ -286,5 +466,10 @@ module.exports = {
     createPasswordResetToken,
     getPasswordResetToken,
     deletePasswordResetToken,
-    deleteExpiredResetTokens
+    deleteExpiredResetTokens,
+    createBrand,
+    getBrandsByUserId,
+    getBrandById,
+    updateBrand,
+    deleteBrand
 };

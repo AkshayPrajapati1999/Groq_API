@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "Groq API",
-        "description": "Complete API collection for Groq Intent Router including authentication and intent management",
+        "description": "Complete API collection for Groq Intent Router including authentication, intent management, and multi-brand support",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -12,6 +12,11 @@
         },
         {
             "key": "sessionId",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "lastBrandId",
             "value": "",
             "type": "string"
         }
@@ -128,11 +133,16 @@
                         },
                         "description": "Get user profile"
                     }
-                },
+                }
+            ]
+        },
+        {
+            "name": "Brands",
+            "item": [
                 {
-                    "name": "Update Profile",
+                    "name": "Create Tech Brand",
                     "request": {
-                        "method": "PUT",
+                        "method": "POST",
                         "header": [
                             {
                                 "key": "Content-Type",
@@ -145,19 +155,110 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"newemail@example.com\"\n}"
+                            "raw": "{\n    \"name\": \"Nexus AI\",\n    \"tagline\": \"Powering the Next Intelligence\",\n    \"description\": \"Neural Network Solutions API\",\n    \"mission\": \"To advance human potential through AI\",\n    \"vision\": \"A world where AI is seamless and helpful\",\n    \"industry\": \"Technology\",\n    \"website_url\": \"https://nexus.ai\",\n    \"logo_url\": \"https://nexus.ai/logo.png\",\n    \"logo_position\": \"Top-Left\",\n    \"primary_color\": \"#0000FF\",\n    \"secondary_color\": \"#FFFFFF\",\n    \"heading_font\": \"Inter\",\n    \"body_font\": \"Roboto\",\n    \"brand_guidelines_url\": \"https://nexus.ai/brand-book.pdf\",\n    \"date_format\": \"dd/mm/yyyy\",\n    \"brandVoice\": \"Authoritative and Futuristic\",\n    \"targetAudience\": \"CTOs\"\n}"
                         },
                         "url": {
-                            "raw": "{{baseUrl}}/auth/profile",
+                            "raw": "{{baseUrl}}/brands",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
-                                "auth",
-                                "profile"
+                                "brands"
                             ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Fashion Brand",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"UrbanVibe\",\n    \"tagline\": \"Wear Your Story\",\n    \"description\": \"Premium Streetwear\",\n    \"mission\": \"Empowering individuals through style\",\n    \"vision\": \"To be the voice of urban youth culture\",\n    \"industry\": \"Fashion\",\n    \"website_url\": \"https://urbanvibe.com\",\n    \"logo_url\": \"https://urbanvibe.com/logo.png\",\n    \"logo_position\": \"Center\",\n    \"primary_color\": \"#FF4500\",\n    \"secondary_color\": \"#000000\",\n    \"heading_font\": \"Oswald\",\n    \"body_font\": \"Montserrat\",\n    \"date_format\": \"yyyy-mm-dd\",\n    \"brandVoice\": \"Trendy and Bold\",\n    \"targetAudience\": \"Gen Z\"\n}"
                         },
-                        "description": "Update user profile"
+                        "url": {
+                            "raw": "{{baseUrl}}/brands",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "brands"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get My Brands",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 200) {",
+                                    "    const brands = pm.response.json().brands;",
+                                    "    if (brands.length > 0) {",
+                                    "        pm.collectionVariables.set('lastBrandId', brands[0].id);",
+                                    "    }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/brands",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "brands"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Brand Details",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/brands/:id",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "brands",
+                                ":id"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "id",
+                                    "value": "{{lastBrandId}}"
+                                }
+                            ]
+                        }
                     }
                 }
             ]
@@ -166,22 +267,7 @@
             "name": "Intents",
             "item": [
                 {
-                    "name": "Route Query",
-                    "event": [
-                        {
-                            "listen": "test",
-                            "script": {
-                                "exec": [
-                                    "if (pm.response.code === 200) {",
-                                    "    const jsonData = pm.response.json();",
-                                    "    if (jsonData.sessionId) {",
-                                    "        pm.collectionVariables.set('sessionId', jsonData.sessionId);",
-                                    "    }",
-                                    "}"
-                                ]
-                            }
-                        }
-                    ],
+                    "name": "Route Query (No Brand)",
                     "request": {
                         "method": "POST",
                         "header": [
@@ -202,12 +288,11 @@
                             "path": [
                                 "route"
                             ]
-                        },
-                        "description": "Route user query to create or schedule intent"
+                        }
                     }
                 },
                 {
-                    "name": "Route Query with Session",
+                    "name": "Route Query with Brand",
                     "request": {
                         "method": "POST",
                         "header": [
@@ -222,7 +307,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"query\": \"create a new project\"\n}"
+                            "raw": "{\n  \"query\": \"create a post about our new launch\",\n  \"brandId\": \"{{lastBrandId}}\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/route",
@@ -233,33 +318,11 @@
                                 "route"
                             ]
                         },
-                        "description": "Route user query with existing session"
+                        "description": "Uses the specified brand's context to generate personalized content."
                     }
                 },
                 {
-                    "name": "Get Create Intents",
-                    "request": {
-                        "method": "GET",
-                        "header": [
-                            {
-                                "key": "Session-Id",
-                                "value": "{{sessionId}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{baseUrl}}/creates",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "creates"
-                            ]
-                        },
-                        "description": "Get create intents"
-                    }
-                },
-                {
-                    "name": "Get Schedule Intents",
+                    "name": "Get My Schedules",
                     "request": {
                         "method": "GET",
                         "header": [
@@ -276,74 +339,7 @@
                             "path": [
                                 "schedules"
                             ]
-                        },
-                        "description": "Get schedule intents"
-                    }
-                },
-                {
-                    "name": "Accept/Reject Schedule Intent",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Session-Id",
-                                "value": "{{sessionId}}"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"action\": \"accept\"\n}"
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/schedule/:id",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "schedule",
-                                ":id"
-                            ],
-                            "variable": [
-                                {
-                                    "key": "id",
-                                    "value": "1234567890"
-                                }
-                            ]
-                        },
-                        "description": "Accept or reject schedule intent"
-                    }
-                },
-                {
-                    "name": "Delete Intent",
-                    "request": {
-                        "method": "DELETE",
-                        "header": [
-                            {
-                                "key": "Session-Id",
-                                "value": "{{sessionId}}"
-                            }
-                        ],
-                        "url": {
-                            "raw": "{{baseUrl}}/intent/:id",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "intent",
-                                ":id"
-                            ],
-                            "variable": [
-                                {
-                                    "key": "id",
-                                    "value": "1234567890"
-                                }
-                            ]
-                        },
-                        "description": "Delete an intent"
+                        }
                     }
                 }
             ]

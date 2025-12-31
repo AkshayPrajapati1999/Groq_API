@@ -13,6 +13,13 @@ const {
   changePassword
 } = require("./auth");
 const { authenticateToken, authenticateSession, optionalAuth, authorizeAdmin } = require("./authMiddleware");
+const {
+  setupBrand,
+  getUserBrands,
+  getBrandDetails,
+  updateBrandDetails,
+  removeBrand
+} = require("./brand");
 const { getUserByEmail, createUser } = require("./authStorage");
 
 const app = express();
@@ -164,6 +171,82 @@ app.post("/session", authenticateToken, async (req, res) => {
 });
 
 // ============================================
+// BRAND MANAGEMENT ROUTES
+// ============================================
+
+/**
+ * POST /brands
+ * Create a new brand for the authenticated user
+ * Headers: Authorization: Bearer <token>
+ * Body: { name, description, industry, website, targetAudience, brandVoice }
+ */
+app.post("/brands", authenticateSession, async (req, res) => {
+  try {
+    const result = await setupBrand(req.user.userId, req.body);
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /brands
+ * Get all brands for the authenticated user
+ * Headers: Authorization: Bearer <token>
+ */
+app.get("/brands", authenticateSession, async (req, res) => {
+  try {
+    const result = await getUserBrands(req.user.userId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /brands/:id
+ * Get details for a specific brand
+ * Headers: Authorization: Bearer <token>
+ */
+app.get("/brands/:id", authenticateSession, async (req, res) => {
+  try {
+    const result = await getBrandDetails(req.user.userId, req.params.id);
+    res.json(result);
+  } catch (err) {
+    res.status(err.message.includes("denied") ? 403 : 404).json({ error: err.message });
+  }
+});
+
+/**
+ * PUT /brands/:id
+ * Update brand details
+ * Headers: Authorization: Bearer <token>
+ * Body: { name, description, industry, website, targetAudience, brandVoice }
+ */
+app.put("/brands/:id", authenticateSession, async (req, res) => {
+  try {
+    const result = await updateBrandDetails(req.user.userId, req.params.id, req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(err.message.includes("denied") ? 403 : 404).json({ error: err.message });
+  }
+});
+
+/**
+ * DELETE /brands/:id
+ * Delete a brand
+ * Headers: Authorization: Bearer <token>
+ */
+app.delete("/brands/:id", authenticateSession, async (req, res) => {
+  try {
+    const result = await removeBrand(req.user.userId, req.params.id);
+    res.json(result);
+  } catch (err) {
+    res.status(err.message.includes("denied") ? 403 : 404).json({ error: err.message });
+  }
+});
+
+// ============================================
 // EXISTING ROUTES
 // ============================================
 
@@ -212,8 +295,9 @@ app.post("/route", async (req, res) => {
   }
 
   try {
-    console.log(`Processing query for ${userEmail}: ${userQuery}`);
-    const result = await routeQuery(userQuery, userId);
+    const brandId = req.body?.brandId;
+    console.log(`Processing query for ${userEmail}: ${userQuery} (Brand: ${brandId || 'None'})`);
+    const result = await routeQuery(userQuery, userId, brandId);
     const response = { ...result };
     if (!sessionProvided) {
       response.sessionId = sessionId;
