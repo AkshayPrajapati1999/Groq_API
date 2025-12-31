@@ -45,7 +45,7 @@ function addIntent(type, intent, userId = null) {
   return new Promise((resolve) => {
     const id = Date.now().toString();
     const data = JSON.stringify(intent);
-    db.run('INSERT INTO intents (id, type, data, status, user_id) VALUES (?, ?, ?, ?, ?)', [id, type, data, 'pending', userId], function(err) {
+    db.run('INSERT INTO intents (id, type, data, status, user_id) VALUES (?, ?, ?, ?, ?)', [id, type, data, 'pending', userId], function (err) {
       if (err) {
         console.error('Error adding intent:', err);
         resolve(null);
