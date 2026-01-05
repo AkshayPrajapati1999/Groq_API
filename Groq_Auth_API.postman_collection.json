@@ -133,6 +133,149 @@
                         },
                         "description": "Get user profile"
                     }
+                },
+                {
+                    "name": "Refresh Token",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"refreshToken\": \"your-refresh-token-here\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/refresh",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "refresh"
+                            ]
+                        },
+                        "description": "Refresh access token"
+                    }
+                },
+                {
+                    "name": "Forgot Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"test@example.com\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/forgot-password",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "forgot-password"
+                            ]
+                        },
+                        "description": "Request password reset"
+                    }
+                },
+                {
+                    "name": "Reset Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"resetToken\": \"your-reset-token\",\n  \"newPassword\": \"newpassword123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/reset-password",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "reset-password"
+                            ]
+                        },
+                        "description": "Reset password using token"
+                    }
+                },
+                {
+                    "name": "Update Profile",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Updated Name\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/profile",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "profile"
+                            ]
+                        },
+                        "description": "Update user profile"
+                    }
+                },
+                {
+                    "name": "Change Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"currentPassword\": \"password123\",\n  \"newPassword\": \"newpassword123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/change-password",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "change-password"
+                            ]
+                        },
+                        "description": "Change password"
+                    }
                 }
             ]
         },
@@ -260,6 +403,72 @@
                             ]
                         }
                     }
+                },
+                {
+                    "name": "Update Brand",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Updated Brand Name\",\n    \"description\": \"Updated description\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/brands/:id",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "brands",
+                                ":id"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "id",
+                                    "value": "{{lastBrandId}}"
+                                }
+                            ]
+                        },
+                        "description": "Update brand details"
+                    }
+                },
+                {
+                    "name": "Delete Brand",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/brands/:id",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "brands",
+                                ":id"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "id",
+                                    "value": "{{lastBrandId}}"
+                                }
+                            ]
+                        },
+                        "description": "Delete a brand"
+                    }
                 }
             ]
         },
@@ -267,7 +476,7 @@
             "name": "Intents",
             "item": [
                 {
-                    "name": "Route Query (No Brand)",
+                    "name": "Route Query",
                     "request": {
                         "method": "POST",
                         "header": [
@@ -278,7 +487,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"query\": \"schedule a meeting tomorrow\"\n}"
+                            "raw": "{\n  \"query\": \"create a post about our new launch\",\n  \"website_url\": \"https://nexus.ai\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/route",
@@ -292,7 +501,7 @@
                     }
                 },
                 {
-                    "name": "Route Query with Brand",
+                    "name": "Route Query with Brand Name",
                     "request": {
                         "method": "POST",
                         "header": [
@@ -307,7 +516,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"query\": \"create a post about our new launch\",\n  \"brandId\": \"{{lastBrandId}}\"\n}"
+                            "raw": "{\n  \"query\": \"schedule a meeting\",\n  \"brandName\": \"UrbanVibe\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/route",
@@ -318,7 +527,7 @@
                                 "route"
                             ]
                         },
-                        "description": "Uses the specified brand's context to generate personalized content."
+                        "description": "Uses the brand associated with the specified website_url to generate personalized content."
                     }
                 },
                 {
@@ -340,6 +549,175 @@
                                 "schedules"
                             ]
                         }
+                    }
+                },
+                {
+                    "name": "Get All Intents",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/intents",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "intents"
+                            ]
+                        },
+                        "description": "Get all intents (admin sees all, user sees own)"
+                    }
+                },
+                {
+                    "name": "Get My Creates",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/creates",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "creates"
+                            ]
+                        },
+                        "description": "Get my create intents"
+                    }
+                },
+                {
+                    "name": "Get My Sessions",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/sessions",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "sessions"
+                            ]
+                        },
+                        "description": "Get my sessions"
+                    }
+                },
+                {
+                    "name": "Accept Create Intent",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"action\": \"accept\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/create/:id",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "create",
+                                ":id"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "id",
+                                    "value": "intent-id-here"
+                                }
+                            ]
+                        },
+                        "description": "Accept or reject create intent"
+                    }
+                },
+                {
+                    "name": "Accept Schedule Intent",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"action\": \"accept\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/schedule/:id",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "schedule",
+                                ":id"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "id",
+                                    "value": "intent-id-here"
+                                }
+                            ]
+                        },
+                        "description": "Accept or reject schedule intent"
+                    }
+                },
+                {
+                    "name": "Delete Intent",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Session-Id",
+                                "value": "{{sessionId}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/intent/:id",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "intent",
+                                ":id"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "id",
+                                    "value": "intent-id-here"
+                                }
+                            ]
+                        },
+                        "description": "Delete an intent"
                     }
                 }
             ]

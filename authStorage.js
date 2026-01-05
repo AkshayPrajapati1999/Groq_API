@@ -27,6 +27,16 @@ db.serialize(() => {
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
+
+
+
+
+    // Create index on email for faster lookups
+    db.run(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
+
+    // Create index on reset tokens
+    db.run(`CREATE INDEX IF NOT EXISTS idx_reset_tokens ON password_reset_tokens(token)`);
+
     // Brands table
     db.run(`CREATE TABLE IF NOT EXISTS brands (
     id TEXT PRIMARY KEY,
@@ -68,14 +78,10 @@ db.serialize(() => {
         });
     });
 
-    // Create index on email for faster lookups
-    db.run(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
-
-    // Create index on reset tokens
-    db.run(`CREATE INDEX IF NOT EXISTS idx_reset_tokens ON password_reset_tokens(token)`);
-
     // Create index on brand user_id
     db.run(`CREATE INDEX IF NOT EXISTS idx_brands_user_id ON brands(user_id)`);
+
+
 });
 
 /**
@@ -319,6 +325,8 @@ setInterval(() => {
     });
 }, 3600000); // 1 hour
 
+
+
 /**
  * Create a new brand
  */
@@ -396,6 +404,44 @@ function getBrandById(brandId) {
 }
 
 /**
+ * Get brand by name and user ID
+ */
+function getBrandByNameAndUserId(userId, name) {
+    return new Promise((resolve, reject) => {
+        db.get(
+            'SELECT * FROM brands WHERE user_id = ? AND name = ?',
+            [userId, name],
+            (err, row) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(row || null);
+                }
+            }
+        );
+    });
+}
+
+/**
+ * Get brand by website_url and user ID
+ */
+function getBrandByWebsiteUrl(userId, website_url) {
+    return new Promise((resolve, reject) => {
+        db.get(
+            'SELECT * FROM brands WHERE user_id = ? AND website_url = ?',
+            [userId, website_url],
+            (err, row) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(row || null);
+                }
+            }
+        );
+    });
+}
+
+/**
  * Update brand
  */
 function updateBrand(brandId, updates) {
@@ -407,6 +453,9 @@ function updateBrand(brandId, updates) {
             'secondary_color', 'heading_font', 'body_font',
             'brand_guidelines_url', 'date_format', 'target_audience', 'brand_voice'
         ];
+
+        const fields = [];
+        const values = [];
 
         for (const [key, value] of Object.entries(updates)) {
             if (validFields.includes(key)) {
@@ -470,6 +519,8 @@ module.exports = {
     createBrand,
     getBrandsByUserId,
     getBrandById,
+    getBrandByNameAndUserId,
+    getBrandByWebsiteUrl,
     updateBrand,
     deleteBrand
 };

@@ -13,14 +13,9 @@ const {
   changePassword
 } = require("./auth");
 const { authenticateToken, authenticateSession, optionalAuth, authorizeAdmin } = require("./authMiddleware");
-const {
-  setupBrand,
-  getUserBrands,
-  getBrandDetails,
-  updateBrandDetails,
-  removeBrand
-} = require("./brand");
-const { getUserByEmail, createUser } = require("./authStorage");
+const { setupBrand, getUserBrands, getBrandDetails, updateBrandDetails, removeBrand } = require("./brand");
+
+const { getUserByEmail, createUser, getBrandByNameAndUserId, getBrandByWebsiteUrl } = require("./authStorage");
 
 const app = express();
 app.use(express.json());
@@ -155,21 +150,6 @@ app.post("/auth/change-password", authenticateSession, async (req, res) => {
   }
 });
 
-/**
- * POST /session
- * Create a new session for the authenticated user
- * Headers: Authorization: Bearer <token>
- */
-app.post("/session", authenticateToken, async (req, res) => {
-  try {
-    const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    await createSession(sessionId, req.user.userId);
-    res.json({ sessionId });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ============================================
 // BRAND MANAGEMENT ROUTES
 // ============================================
@@ -269,6 +249,7 @@ app.post("/route", async (req, res) => {
     anonymousUser = { id: anonymousId, email: 'anonymous@example.com' };
   }
 
+  let isAnonymous = false;
   if (sessionId) {
     const session = await getSession(sessionId);
     if (session) {
@@ -276,18 +257,14 @@ app.post("/route", async (req, res) => {
       const user = await require('./authStorage').getUserById(userId);
       userEmail = user ? user.email : 'unknown';
     } else {
-      // Session doesn't exist, create new for anonymous
-      sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-      userId = anonymousUser.id;
-      userEmail = 'anonymous@example.com';
-      await createSession(sessionId, userId);
+      // Invalid sessionId provided
+      return res.status(401).json({ error: "Invalid session ID" });
     }
   } else {
-    // No sessionId provided, create new for anonymous
-    sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    // No sessionId provided
+    isAnonymous = true;
     userId = anonymousUser.id;
     userEmail = 'anonymous@example.com';
-    await createSession(sessionId, userId);
   }
 
   if (!userQuery) {
@@ -295,7 +272,27 @@ app.post("/route", async (req, res) => {
   }
 
   try {
-    const brandId = req.body?.brandId;
+    let brandId = null;
+    if (req.body?.website_url || req.body?.brandName) {
+      if (isAnonymous) {
+        return res.status(401).json({ error: "Session ID is required for brand lookup" });
+      }
+      if (req.body?.website_url) {
+        const brand = await getBrandByWebsiteUrl(userId, req.body.website_url);
+        if (brand) {
+          brandId = brand.id;
+        } else {
+          return res.status(404).json({ error: "Brand not found" });
+        }
+      } else if (req.body?.brandName) {
+        const brand = await getBrandByNameAndUserId(userId, req.body.brandName);
+        if (brand) {
+          brandId = brand.id;
+        } else {
+          return res.status(404).json({ error: "Brand not found" });
+        }
+      }
+    }
     console.log(`Processing query for ${userEmail}: ${userQuery} (Brand: ${brandId || 'None'})`);
     const result = await routeQuery(userQuery, userId, brandId);
     const response = { ...result };
