@@ -610,43 +610,6 @@
                     }
                 },
                 {
-                    "name": "Accept Create Intent",
-                    "request": {
-                        "method": "POST",
-                        "header": [
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
-                            },
-                            {
-                                "key": "Session-Id",
-                                "value": "{{sessionId}}"
-                            }
-                        ],
-                        "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"action\": \"accept\"\n}"
-                        },
-                        "url": {
-                            "raw": "{{baseUrl}}/create/:id",
-                            "host": [
-                                "{{baseUrl}}"
-                            ],
-                            "path": [
-                                "create",
-                                ":id"
-                            ],
-                            "variable": [
-                                {
-                                    "key": "id",
-                                    "value": "intent-id-here"
-                                }
-                            ]
-                        },
-                        "description": "Accept or reject create intent"
-                    }
-                },
-                {
                     "name": "Accept Schedule Intent",
                     "request": {
                         "method": "POST",

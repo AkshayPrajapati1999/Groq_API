@@ -90,10 +90,15 @@ function getIntent(id) {
   });
 }
 
-function readIntents(userId = null) {
+function readIntents(userId = null, isAdmin = false) {
   return new Promise((resolve) => {
-    let query = 'SELECT * FROM intents WHERE user_id = ?';
-    let params = [userId];
+    let query = 'SELECT * FROM intents';
+    let params = [];
+
+    if (!isAdmin && userId) {
+      query += ' WHERE user_id = ?';
+      params.push(userId);
+    }
 
     query += ' ORDER BY id DESC';
 

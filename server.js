@@ -308,10 +308,10 @@ app.post("/route", async (req, res) => {
 
 /**
  * GET /intents
- * View intents (User sees own, Admin sees all)
+ * View all intents
  */
 app.get("/intents", authenticateSession, async (req, res) => {
-  const intents = await readIntents(null, true); // Show all intents
+  const intents = await readIntents(null, true);
   res.json(intents);
 });
 
@@ -346,39 +346,7 @@ app.get("/sessions", authenticateSession, async (req, res) => {
   res.json(sessions);
 });
 
-/**
- * POST /create/:id
- * Accept/Reject create (Owner or Admin)
- */
-app.post("/create/:id", authenticateSession, async (req, res) => {
-  const { id } = req.params;
-  const { action } = req.body;
-  const { userId, role } = req.user;
 
-  try {
-    const intent = await getIntent(id);
-    if (!intent) {
-      return res.status(404).json({ error: "Intent not found" });
-    }
-
-    // Security Check: Only Owner or Admin can update
-    if (intent.user_id !== userId && role !== 'admin') {
-      return res.status(403).json({ error: "Access denied. You do not own this intent." });
-    }
-
-    if (action === "accept") {
-      await updateIntentStatus(id, "accepted");
-      res.json({ message: "Create intent accepted" });
-    } else if (action === "reject") {
-      await updateIntentStatus(id, "rejected");
-      res.json({ message: "Create intent rejected" });
-    } else {
-      res.status(400).json({ error: "Invalid action" });
-    }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 /**
  * POST /schedule/:id
